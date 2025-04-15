@@ -1,151 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reboot01 Login</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 400px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        #loginForm {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background-color: #0066ff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #error {
-            color: #d32f2f;
-            min-height: 20px;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-        #success {
-            color: #388e3c;
-            display: none;
-            margin-top: 10px;
-        }
-    </style>
-    <!-- Prevents favicon.ico 404 error -->
-    <link rel="icon" href="data:,">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My GraphQL Profile</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2rem;
+      background: #f0f4f8;
+      color: #333;
+    }
+    #login-form, #profile-section {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    input, button {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .graph {
+      margin-top: 2rem;
+    }
+    svg {
+      width: 100%;
+      height: 200px;
+      background: #e8f0fe;
+      border-radius: 10px;
+    }
+    #error-msg {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <div id="loginForm">
-        <h2>Reboot01 Login</h2>
-        <form id="form">
-            <input type="text" id="username" placeholder="Username or Email" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-            <div id="error"></div>
-            <div id="success"></div>
-        </form>
+
+  <div id="login-form">
+    <h2>Login</h2>
+    <input type="text" id="identifier" placeholder="Username or Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <p id="error-msg"></p>
+  </div>
+
+  <div id="profile-section" style="display:none;">
+    <h2>Welcome, <span id="user-login"></span></h2>
+    <p><strong>User ID:</strong> <span id="user-id"></span></p>
+    <p><strong>Total XP:</strong> <span id="total-xp"></span></p>
+
+    <div class="graph">
+      <h3>XP Earned Over Time</h3>
+      <svg id="xp-graph"></svg>
     </div>
 
-    <script>
-        // Built-in CORS proxy for GitHub Pages
-        const PROXY_URL = 'https://cors-anywhere.herokuapp.com/https://learn.reboot01.com/api/auth/signin';
-        
-        document.getElementById('form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorEl = document.getElementById('error');
-            const successEl = document.getElementById('success');
-            const submitBtn = e.target.querySelector('button[type="submit"]');
+    <div class="graph">
+      <h3>Project Pass/Fail Ratio</h3>
+      <svg id="ratio-graph"></svg>
+    </div>
 
-            // Reset UI
-            errorEl.textContent = '';
-            successEl.style.display = 'none';
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Authenticating...';
+    <button onclick="logout()">Logout</button>
+  </div>
 
-            try {
-                // 1. Encode credentials
-                const authString = btoa(`${encodeURIComponent(username)}:${encodeURIComponent(password)}`);
-                
-                // 2. Make request through proxy
-                const response = await fetch(PROXY_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Basic ${authString}`,
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Proxy-Origin': 'https://yourusername.github.io'
-                    },
-                    body: JSON.stringify({}) // Some APIs require empty body
-                });
+  <script>
+    const domain = "((DOMAIN))"; // <-- Replace with your actual domain
+    let jwt = "";
 
-                // 3. Handle response
-                const responseText = await response.text();
-                let token;
-                
-                try {
-                    token = responseText.startsWith('{') ? JSON.parse(responseText) : responseText;
-                } catch {
-                    token = responseText;
-                }
+    async function login() {
+      const id = document.getElementById("identifier").value;
+      const pwd = document.getElementById("password").value;
+      const basic = btoa(`${id}:${pwd}`);
+      const errorMsg = document.getElementById("error-msg");
+      errorMsg.innerText = "";
+      errorMsg.style.color = "red";
 
-                if (response.ok && token) {
-                    // 4. Store token
-                    localStorage.setItem('reboot_jwt', typeof token === 'string' ? token : JSON.stringify(token));
-                    
-                    // 5. Show success
-                    successEl.textContent = 'Login successful! Redirecting...';
-                    successEl.style.display = 'block';
-                    
-                    // 6. Redirect
-                    setTimeout(() => {
-                        window.location.href = 'profile.html';
-                    }, 1500);
-                } else {
-                    throw new Error(
-                        token?.error || 
-                        responseText?.error || 
-                        `Login failed (HTTP ${response.status})`
-                    );
-                }
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                errorEl.textContent = error.message.includes('Failed to fetch') 
-                    ? 'Network error. Please try again later.' 
-                    : error.message;
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Login';
-            }
-        });
+      const res = await fetch(`https://${domain}/api/auth/signin`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basic}`,
+        },
+      });
 
-        // Auto-focus username field
-        document.getElementById('username').focus();
-    </script>
+      if (!res.ok) {
+        errorMsg.innerText = "Invalid credentials. Please try again.";
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data.token) {
+        errorMsg.innerText = "Login failed: JWT token not returned.";
+        return;
+      }
+
+      jwt = data.token;
+
+      // Decode user ID from JWT payload
+      try {
+        const payload = JSON.parse(atob(jwt.split('.')[1]));
+        const userId = payload.sub;
+
+        // Show success indication
+        errorMsg.style.color = "green";
+        errorMsg.innerText = "Login successful! Loading profile...";
+
+        await loadProfile(userId);
+      } catch (err) {
+        errorMsg.innerText = "Failed to decode JWT.";
+        console.error(err);
+      }
+    }
+
+    async function graphql(query, variables = {}) {
+      const res = await fetch(`https://${domain}/api/graphql-engine/v1/graphql`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+      return res.json();
+    }
+
+    async function loadProfile(userId) {
+      document.getElementById("login-form").style.display = "none";
+      document.getElementById("profile-section").style.display = "block";
+
+      // 1. Get user login and ID
+      const userData = await graphql(`
+        query {
+          user {
+            id
+            login
+          }
+        }
+      `);
+      const user = userData.data.user[0];
+      document.getElementById("user-login").textContent = user.login;
+      document.getElementById("user-id").textContent = user.id;
+
+      // 2. Get XP over time
+      const xpData = await graphql(`
+        query {
+          transaction(where: { userId: { _eq: ${userId} }, type: { _eq: "xp" } }) {
+            amount
+            createdAt
+          }
+        }
+      `);
+      const xpPoints = xpData.data.transaction;
+      const totalXP = xpPoints.reduce((sum, xp) => sum + xp.amount, 0);
+      document.getElementById("total-xp").textContent = totalXP;
+
+      drawXPGraph(xpPoints);
+
+      // 3. Project Pass/Fail ratio from results
+      const resultData = await graphql(`
+        query {
+          result(where: { userId: { _eq: ${userId} } }) {
+            grade
+          }
+        }
+      `);
+      drawRatioGraph(resultData.data.result);
+    }
+
+    function drawXPGraph(data) {
+      const svg = document.getElementById("xp-graph");
+      svg.innerHTML = "";
+      const w = svg.clientWidth;
+      const h = svg.clientHeight;
+      const maxXP = Math.max(...data.map(d => d.amount), 1);
+      const barWidth = w / data.length;
+
+      data.forEach((d, i) => {
+        const height = (d.amount / maxXP) * h;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", i * barWidth);
+        rect.setAttribute("y", h - height);
+        rect.setAttribute("width", barWidth - 2);
+        rect.setAttribute("height", height);
+        rect.setAttribute("fill", "#4CAF50");
+        svg.appendChild(rect);
+      });
+    }
+
+    function drawRatioGraph(results) {
+      const svg = document.getElementById("ratio-graph");
+      svg.innerHTML = "";
+
+      const pass = results.filter(r => r.grade >= 1).length;
+      const fail = results.length - pass;
+      const total = pass + fail;
+      const passPercent = (pass / total) * 360;
+
+      const passArc = describeArc(100, 100, 80, 0, passPercent);
+      const failArc = describeArc(100, 100, 80, passPercent, 360);
+
+      const path1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path1.setAttribute("d", passArc);
+      path1.setAttribute("fill", "green");
+
+      const path2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path2.setAttribute("d", failArc);
+      path2.setAttribute("fill", "red");
+
+      svg.appendChild(path1);
+      svg.appendChild(path2);
+    }
+
+    function polarToCartesian(cx, cy, r, angle) {
+      const rad = (angle - 90) * Math.PI / 180.0;
+      return {
+        x: cx + r * Math.cos(rad),
+        y: cy + r * Math.sin(rad),
+      };
+    }
+
+    function describeArc(cx, cy, r, startAngle, endAngle) {
+      const start = polarToCartesian(cx, cy, r, endAngle);
+      const end = polarToCartesian(cx, cy, r, startAngle);
+      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+      return [
+        "M", start.x, start.y,
+        "A", r, r, 0, largeArcFlag, 0, end.x, end.y,
+        "L", cx, cy,
+        "Z"
+      ].join(" ");
+    }
+
+    function logout() {
+      jwt = "";
+      document.getElementById("login-form").style.display = "block";
+      document.getElementById("profile-section").style.display = "none";
+      document.getElementById("identifier").value = "";
+      document.getElementById("password").value = "";
+      const errorMsg = document.getElementById("error-msg");
+      errorMsg.style.color = "red";
+      errorMsg.innerText = "Logged out.";
+    }
+  </script>
 </body>
 </html>
