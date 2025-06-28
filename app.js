@@ -1,4 +1,3 @@
-// DOM Elements
 const loginContainer = document.getElementById('login-container');
 const profileContainer = document.getElementById('profile-container');
 const loginBtn = document.getElementById('login-btn');
@@ -19,12 +18,10 @@ const xpGraph = document.getElementById('xp-graph');
 const skillsContainer = document.getElementById('skills-container');
 const projectsList = document.getElementById('projects-list');
 
-// Configuration
 const API_DOMAIN = 'https://learn.reboot01.com';
 const SIGNIN_URL = `${API_DOMAIN}/api/auth/signin`;
 const GRAPHQL_URL = `${API_DOMAIN}/api/graphql-engine/v1/graphql`;
 
-// Check for existing token on page load
 document.addEventListener('DOMContentLoaded', async () => {
   await loadD3();
   
@@ -41,7 +38,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Login button click handler
 loginBtn.addEventListener('click', async () => {
   const username = usernameInput.value.trim();
   const password = passwordInput.value.trim();
@@ -71,10 +67,8 @@ loginBtn.addEventListener('click', async () => {
   }
 });
 
-// Logout button click handler
 logoutBtn.addEventListener('click', logout);
 
-// Helper function to parse JWT
 function parseJwt(token) {
   try {
     const base64Url = token.split('.')[1];
@@ -97,7 +91,6 @@ function parseJwt(token) {
   }
 }
 
-// Authentication function
 async function authenticate(username, password) {
   const credentials = btoa(`${username}:${password}`);
   
@@ -118,7 +111,6 @@ async function authenticate(username, password) {
   return data;
 }
 
-// Fetch all profile data
 async function fetchProfileData(token) {
   try {
     const userData = parseJwt(token);
@@ -295,7 +287,6 @@ async function fetchProfileData(token) {
   }
 }
 
-// Display profile data
 function displayProfileData(data) {
   const user = data.user && data.user[0] ? data.user[0] : {
     firstName: "N/A",
@@ -307,10 +298,11 @@ function displayProfileData(data) {
     labels: []
   };
 
-  const level = data.level && data.level[0] ? data.level[0].amount || 0 : 0;
-  const xp = data.xp && data.xp.aggregate && data.xp.aggregate.sum && data.xp.aggregate.sum.amount !== null
-    ? data.xp.aggregate.sum.amount
-    : 0;
+  const level = data.level && data.level[0] ? Math.round(data.level[0].amount) : 0;
+  
+  const xp = data.xp?.aggregate?.sum?.amount || 0;
+  const totalKB = Math.round(xp / 1000);
+
   const skills = data.skills || [];
   const projects = data.projects || [];
   const events = data.events || [];
@@ -325,20 +317,20 @@ function displayProfileData(data) {
     day: 'numeric' 
   });
   
-  totalXp.textContent = xp.toLocaleString();
+  totalXp.textContent = totalKB.toLocaleString(); 
   
-  // Updated audit ratio display with rounding
-  const roundedRatio = user.auditRatio ? Math.round(user.auditRatio * 100) / 100 : null;
+
+  const roundedRatio = user.auditRatio ? Math.round(user.auditRatio * 10) / 10 : null;
   auditRatio.textContent = roundedRatio !== null ? roundedRatio : 'N/A';
   
   userLevel.textContent = level;
   
   renderSkills(skills);
-  renderProjects(projects);
+  renderProjects(projects); 
   renderXpChart(data.progress || []);
 }
 
-// Render skills
+
 function renderSkills(skills) {
   skillsContainer.innerHTML = '';
   
@@ -357,7 +349,7 @@ function renderSkills(skills) {
   });
 }
 
-// Render projects
+
 function renderProjects(projects) {
   projectsList.innerHTML = '';
   
@@ -367,6 +359,9 @@ function renderProjects(projects) {
   }
   
   projects.forEach(project => {
+   
+    const kbValue = (project.amount / 1000).toFixed(2);
+    
     const projectElement = document.createElement('div');
     projectElement.style.padding = '10px';
     projectElement.style.borderBottom = '1px solid #eee';
@@ -375,7 +370,7 @@ function renderProjects(projects) {
       <h3 style="margin-bottom: 5px;">${project.object?.name || 'Unknown Project'}</h3>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-light);">${new Date(project.createdAt).toLocaleDateString()}</span>
-        <span style="font-weight: bold;">+${project.amount} XP</span>
+        <span style="font-weight: bold;">${kbValue} KB</span>
       </div>
     `;
     
@@ -383,7 +378,7 @@ function renderProjects(projects) {
   });
 }
 
-// Render XP chart
+
 function renderXpChart(transactions) {
   const xpByDate = {};
   let cumulativeXP = 0;
@@ -454,7 +449,7 @@ function renderXpChart(transactions) {
     .text('Cumulative XP');
 }
 
-// Helper to create SVG element
+
 function createSVG(container) {
   container.innerHTML = '';
   return d3.select(container)
@@ -465,7 +460,7 @@ function createSVG(container) {
     .append('g');
 }
 
-// Show profile view
+
 function showProfileView() {
   loginContainer.classList.add('hidden');
   successMessage.classList.add('hidden');
@@ -473,7 +468,7 @@ function showProfileView() {
   resetLoginButton();
 }
 
-// Show login view
+
 function showLoginView() {
   loginContainer.classList.remove('hidden');
   profileContainer.classList.add('hidden');
@@ -484,32 +479,32 @@ function showLoginView() {
   resetLoginButton();
 }
 
-// Show error message
+
 function showError(message) {
   errorText.textContent = message;
   errorMessage.classList.remove('hidden');
   successMessage.classList.add('hidden');
 }
 
-// Show success message
+
 function showSuccess() {
   errorMessage.classList.add('hidden');
   successMessage.classList.remove('hidden');
 }
 
-// Reset login button
+
 function resetLoginButton() {
   loginBtn.disabled = false;
   loginBtn.textContent = 'Sign In';
 }
 
-// Logout function
+
 function logout() {
   localStorage.removeItem('jwt_token');
   showLoginView();
 }
 
-// Load D3.js for graphs
+
 function loadD3() {
   return new Promise((resolve, reject) => {
     if (window.d3) return resolve();
